@@ -16,30 +16,31 @@ export const createJsonSqlitePersister = <ListeningHandle>(
   onIgnoredError: ((error: any) => void) | undefined,
   [storeTableName]: DefaultedJsonConfig,
   managedTableNames: string[],
+  scheduleId: any,
 ): Persister => {
-  const [refreshSchema, loadTable, saveTable] = getCommandFunctions(
-    cmd,
-    managedTableNames,
-  );
+  const [refreshSchema, loadTable, saveTable, transaction] =
+    getCommandFunctions(cmd, managedTableNames, onIgnoredError);
 
-  const getPersisted = async (): Promise<[Tables, Values]> => {
-    await refreshSchema();
-    return jsonParse(
-      (await loadTable(storeTableName, DEFAULT_ROW_ID_COLUMN_NAME))[
-        SINGLE_ROW_ID
-      ]?.[STORE_COLUMN] as string,
-    );
-  };
+  const getPersisted = async (): Promise<[Tables, Values]> =>
+    await transaction(async () => {
+      await refreshSchema();
+      return jsonParse(
+        ((await loadTable(storeTableName, DEFAULT_ROW_ID_COLUMN_NAME))[
+          SINGLE_ROW_ID
+        ]?.[STORE_COLUMN] as string) ?? 'null',
+      );
+    });
 
   const setPersisted = async (
     getContent: () => [Tables, Values],
   ): Promise<void> =>
-    persister.schedule(refreshSchema, async () => {
+    await transaction(async () => {
+      await refreshSchema();
       await saveTable(
         storeTableName,
         DEFAULT_ROW_ID_COLUMN_NAME,
         {
-          [SINGLE_ROW_ID]: {[STORE_COLUMN]: jsonString(getContent())},
+          [SINGLE_ROW_ID]: {[STORE_COLUMN]: jsonString(getContent() ?? null)},
         },
         true,
         true,
@@ -53,7 +54,7 @@ export const createJsonSqlitePersister = <ListeningHandle>(
     addPersisterListener,
     delPersisterListener,
     onIgnoredError,
-    0, // global schedule queue to avoid transaction collisions
+    scheduleId,
   );
 
   return persister;

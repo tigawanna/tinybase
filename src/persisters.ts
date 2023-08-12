@@ -52,6 +52,7 @@ export const createCustomPersister = <ListeningHandle>(
         try {
           await action();
         } catch (error) {
+          /*! istanbul ignore next */
           onIgnoredError?.(error);
         }
       }
@@ -140,6 +141,7 @@ export const createCustomPersister = <ListeningHandle>(
           try {
             await setPersisted(store.getContent, getTransactionChanges);
           } catch (error) {
+            /*! istanbul ignore next */
             onIgnoredError?.(error);
           }
           loadSave = 0;
