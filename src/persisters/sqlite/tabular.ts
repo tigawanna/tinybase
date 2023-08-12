@@ -134,13 +134,14 @@ export const createTabularSqlitePersister = <ListeningHandle>(
     }
   };
 
-  const persister: any = createCustomPersister(
+  const persister: any = (createCustomPersister as any)(
     store,
     getPersisted,
     setPersisted,
     addPersisterListener,
     delPersisterListener,
     onIgnoredError,
+    0, // global schedule queue to avoid transaction collisions
   );
 
   return persister;
